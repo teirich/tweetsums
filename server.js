@@ -2,6 +2,7 @@ var OAuth=require('oauth').OAuth;
 var fs = require('fs');
 
 var api_keys = null;
+var oa = null;
 
 //TODO: Move some of these into a Util class
 function log(text){
@@ -24,7 +25,7 @@ function loadAPIKeysSync(){
 
 function getQuery(since){
   var query = 'https://api.twitter.com/1.1/search/tweets.json?q=plus%20equals';
-  if(since != null){
+  if((since != null) && (since > 0)){
     query = query + '&since_id=' + since;
   }
   log("OUTGOING QUERY: " + query);
@@ -44,39 +45,97 @@ function setSince(val){
   });
 }
 
-function callback(e, data, res){
+function postTweet(text, since){
+  log("POST TWEET");
+
+  oa.post(
+    "https://api.twitter.com/1.1/statuses/update.json",
+    api_keys["access_token"],
+    api_keys["access_token_secret"],
+    {"status" : text},
+    "application/json",
+    function(e, data){
+      if(e){
+        err("POST TWEET ERR: " +e);
+      }
+      else{
+        //log the response
+        log("SERVER RESPONSE: " + data);
+
+        //log the last used ID
+        log("LOG SINCE ID: " + since);
+        setSince(since);
+      
+        //restart from beginning after 2 hours
+        // 1 hr = 36000000 ms
+        setTimeout(getTweets, 7200000);
+      }
+    }
+  );
+}
+
+function processResponse(e, data, res){
   if(e){
     err(e);
   }
   else{
+    
+    log("PROCESS RESPONSE");
+    
     var reply = JSON.parse(data);
+    
+    log("PROCESS: " + data);
 
     for(var i = 0; i < reply["statuses"].length; i ++){
       var screen_name = reply["statuses"][i]["user"]["screen_name"];
       var text = reply["statuses"][i]["text"];
+
       if(!text.match(/RT/)){
         //this saves eight characters
-        text = text.replace("plus","+");
-        text = text.replace("equals","=");
+        text = text.replace(/plus/ig,"+");
+        text = text.replace(/equals/ig,"=");
 
-        //adds eight characters
-        log(text + " #QED -@" + screen_name );
+        //but still need to get sn in there
+        
+        if(text.length + screen_name.length + 8 <= 140){
+          text = text + " #QED -@" + screen_name;
+          log(text);
+          postTweet(text, reply["statuses"][i]["id"]);
+          return;
+        }
+        else if (text.length + screen_name.lenght + 7 <= 140){
+          text = text + " #QED @" + screen_name;
+          log(text);
+          postTweet(text, reply["statuses"][i]["id"]);
+          return;
+        }
+        else if (text.length + screen_name.length + 2 <= 140){
+          text = text + " @" + screen_name;
+          log(text);
+          postTweet(text, reply["statuses"][i]["id"]);
+          return;
+        }
       }
     }
-    //log the last used ID
-    log("MAX_ID: " + reply["search_metadata"]["max_id"]);
-  
-    setSince(reply["search_metadata"]["max_id"]);
   }
+}
+
+function getTweets(since) {
+    //GET response
+    var response = oa.get(
+      getQuery(since),
+      api_keys["access_token"],  //access token
+      api_keys["access_token_secret"], //acces token secret
+      processResponse);
 }
 
 function start(since) {
 
-  log((new Date()).getTime() + "......BOT STARTED......" 
+  log((new Date()).getTime() + "......BOT STARTED......" );
     
   loadAPIKeysSync();
 
-  var oa= new OAuth(
+  oa= new OAuth(
     'https://api.twitter.com/oauth/request_token',
     'https://api.twitter.com/oauth/access_token',
     api_keys["API_key"],
@@ -89,16 +148,8 @@ function start(since) {
   var q_since = getSinceSync() * 1;
 
   //start loop
-  while(true){
-
-    //GET response
-    var response = oa.get(
-      getQuery(q_since),
-      api_keys["access_token"],  //access token
-      api_keys["access_token_secret"], //acces token secret
-      callback);
-
-  }
+  getTweets(q_since);
+ 
   //end loop
   log("------ STOP BOT ------");
 }
