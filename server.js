@@ -1,27 +1,15 @@
 var OAuth=require('oauth').OAuth;
-var fs = require('fs');
+var f_util = require('./f_util');
 
 var api_keys = null;
 var oa = null;
 
-//TODO: Move some of these into a Util class
-function log(text){
-  var datetime = new Date();
-  datetime = ("" + datetime).substr(4,20);
-  console.log( datetime + "== " +  text);
-}
-
-function err(text){
-  var datetime = new Date();
-  datetime = ("" + datetime).substr(4,20);
-  console.error( datetime + "## ERROR: " + text);
-}
-
-function loadAPIKeysSync(){
-  var file_in = fs.readFileSync('./API_KEYS.json');
-  api_keys = JSON.parse(file_in);
-  log("API_KEYS: " + JSON.stringify(api_keys));
-}
+//localize these imported functions
+var loadAPIKeysSync = f_util.loadAPIKeysSync;
+var getSinceSync = f_util.getSinceSync;
+var setSince = f_util.setSince;
+var log = f_util.log;
+var err = f_util.err;
 
 function getQuery(since){
   var query = 'https://api.twitter.com/1.1/search/tweets.json?q=plus%20equals';
@@ -30,19 +18,6 @@ function getQuery(since){
   }
   log("OUTGOING QUERY: " + query);
   return query;
-}
-
-function getSinceSync(){
-  var file_in = fs.readFileSync('./SINCE');
-  log('READ SINCE: ' + file_in.toString());
-  return file_in.toString();
-}
-
-function setSince(val){
-  fs.writeFile('./SINCE',val, function (e){
-    if(e){ err(e); throw e; } 
-    log('WRITE SINCE: ' + val);
-  });
 }
 
 function postTweet(text, since){
@@ -133,7 +108,7 @@ function start(since) {
 
   log((new Date()).getTime() + "......BOT STARTED......" );
     
-  loadAPIKeysSync();
+  api_keys = loadAPIKeysSync();
 
   oa= new OAuth(
     'https://api.twitter.com/oauth/request_token',
