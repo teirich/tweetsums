@@ -70,7 +70,7 @@ function processResponse(e, data, res){
         text = text.replace(/plus/ig,"+");
         text = text.replace(/equals/ig,"=");
 
-        //but still need to get sn in there
+        //but still need to get screen name in there
         
         if(text.length + screen_name.length + 8 <= 140){
           text = text + " #QED -@" + screen_name;
@@ -122,10 +122,8 @@ function start(since) {
 
   var q_since = getSinceSync() * 1;
 
-  //start loop
   getTweets(q_since);
  
-  //end loop
   log("------ STOP BOT ------");
 }
 
