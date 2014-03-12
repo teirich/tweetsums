@@ -2,6 +2,7 @@ var OAuth=require('oauth').OAuth;
 var f_util = require('./f_util');
 
 var api_keys = null;
+var blacklist = null;
 var oa = null;
 
 //localize these imported functions
@@ -10,6 +11,17 @@ var getSinceSync = f_util.getSinceSync;
 var setSince = f_util.setSince;
 var log = f_util.log;
 var err = f_util.err;
+var loadBlacklistSync = f_util.loadBlacklistSync;
+
+//ensure that the chosen tweet is not in the blacklist
+function isBlacklisted(tweet){
+  for(var i = 0; i < blacklist.length ; i ++){
+    if(blacklist[i] === tweet){
+      return true;
+    }
+  }
+  return false;
+}
 
 function getQuery(since){
   var query = 'https://api.twitter.com/1.1/search/tweets.json?q=plus%20equals';
@@ -65,7 +77,7 @@ function processResponse(e, data, res){
       var screen_name = reply["statuses"][i]["user"]["screen_name"];
       var text = reply["statuses"][i]["text"];
 
-      if(!text.match(/RT/)){
+      if(!text.match(/RT/) && !isBlacklisted(text)){
         //this saves eight characters
         text = text.replace(/plus/ig,"+");
         text = text.replace(/equals/ig,"=");
@@ -109,7 +121,7 @@ function start(since) {
   log((new Date()).getTime() + "......BOT STARTED......" );
     
   api_keys = loadAPIKeysSync();
-
+  blacklist = loadBlacklistSync();
   oa= new OAuth(
     'https://api.twitter.com/oauth/request_token',
     'https://api.twitter.com/oauth/access_token',

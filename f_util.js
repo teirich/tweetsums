@@ -22,6 +22,13 @@ exports.loadAPIKeysSync = function (){
   return api_keys;
 }
 
+//Returns the blacklisted tweets
+exports.loadBlacklistSync = function(){
+  var file_in = fs.readFileSync('./BLACKLIST');
+  log('READ BLACKLIST: ' + file_in.toString());
+  return file_in.toString().split('\n');
+}
+
 //Returns the highest queried tweet id
 exports.getSinceSync = function (){
   var file_in = fs.readFileSync('./SINCE');
